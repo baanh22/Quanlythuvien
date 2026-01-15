@@ -1,0 +1,139 @@
+:root {
+    --primary-color: #4e73df;
+    --secondary-color: #858796;
+    --success-color: #1cc88a;
+    --info-color: #36b9cc;
+    --warning-color: #f6c23e;
+    --danger-color: #e74a3b;
+    --light-color: #f8f9fa;
+    --dark-color: #5a5c69;
+}
+
+body {
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #5a5c69;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background-color: var(--primary-color);
+    min-height: 100vh;
+    color: white;
+    transition: all 0.3s;
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.2);
+    font-weight: bold;
+}
+
+.sidebar .nav-link i {
+    width: 20px;
+    text-align: center;
+    margin-right: 10px;
+}
+
+/* Content */
+.content-wrapper {
+    flex: 1;
+    overflow-x: hidden;
+    background-color: #f8f9fa;
+}
+
+/* Cards */
+.card-counter {
+    box-shadow: 2px 2px 10px #DADADA;
+    margin: 5px;
+    padding: 20px 25px;
+    /* Increased right padding slightly */
+    background-color: #fff;
+    min-height: 100px;
+    /* Changed height to min-height */
+    height: auto;
+    border-radius: 5px;
+    transition: .3s linear all;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-counter:hover {
+    box-shadow: 4px 4px 20px #DADADA;
+    transition: .3s linear all;
+}
+
+.card-counter.primary {
+    background-color: var(--primary-color);
+    color: #FFF;
+}
+
+.card-counter.success {
+    background-color: var(--success-color);
+    color: #FFF;
+}
+
+.card-counter.danger {
+    background-color: var(--danger-color);
+    color: #FFF;
+}
+
+.card-counter.info {
+    background-color: var(--info-color);
+    color: #FFF;
+}
+
+.card-counter i {
+    font-size: 5em;
+    opacity: 0.2;
+}
+
+.card-counter .stats-info {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    z-index: 10;
+}
+
+.card-counter .count-numbers {
+    font-size: 32px;
+    display: block;
+    line-height: 1;
+    margin-bottom: 5px;
+}
+
+.card-counter .count-name {
+    font-style: italic;
+    text-transform: capitalize;
+    opacity: 0.5;
+    display: block;
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+/* Login */
+.login-page {
+    background-color: var(--primary-color);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-box {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 400px;
+}
