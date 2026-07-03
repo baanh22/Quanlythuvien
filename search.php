@@ -1,17 +1,23 @@
 <?php
 require_once 'config/db.php';
 
-// Fetch Categories
-$categories = $pdo->query("SELECT * FROM categories")->fetchAll();
+// 1. Fetch Categories with Item Counts
+$categories = $pdo->query("
+    SELECT c.id, c.name, COUNT(b.id) as book_count 
+    FROM categories c 
+    LEFT JOIN books b ON c.id = b.category_id 
+    GROUP BY c.id, c.name
+")->fetchAll();
 
-// Search Logic
+// 2. Search Logic
 $search = $_GET['search'] ?? '';
 $cat_filter = $_GET['cat'] ?? '';
 
-$sql = "SELECT b.*, c.name as category_name, p.name as publisher_name 
+$sql = "SELECT b.*, c.name as category_name, p.name as publisher_name, a.name as author_name
         FROM books b 
         LEFT JOIN categories c ON b.category_id = c.id
         LEFT JOIN publishers p ON b.publisher_id = p.id
+        LEFT JOIN authors a ON b.author_id = a.id
         WHERE b.status = 'active' AND (b.title LIKE ? OR b.isbn LIKE ?)";
 $params = ["%$search%", "%$search%"];
 
@@ -30,101 +36,191 @@ $books = $stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tra Cứu Sách - Thư Viện</title>
+    <title>Thư Viện Sách - Tra Cứu</title>
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #f8f9fa; }
-        .book-cover { height: 150px; object-fit: cover; width: 100px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .hero { background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%); color: white; padding: 60px 0; margin-bottom: 30px; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Top Navigation */
+        .navbar-custom { background: #007bff; padding: 10px 0; }
+        .navbar-brand { color: white; font-weight: bold; font-size: 1.5rem; }
+        .navbar-brand:hover { color:white; }
+        .nav-link { color: rgba(255,255,255,0.9); }
+        .nav-link:hover { color: white; }
+        .search-box { border-radius: 20px 0 0 20px; border: none; }
+        .btn-search { border-radius: 0 20px 20px 0; background: #28a745; color: white; font-weight: bold; border: none; }
+        
+        /* Banner Section */
+        .banner-section { 
+            background: #6c757d; 
+            color: white; 
+            text-align: center; 
+            padding: 60px 0; 
+            margin-bottom: 30px; 
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        /* Sidebar */
+        .categories-card { border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .cat-header { background: #007bff; color: white; padding: 15px; font-weight: bold; border-radius: 5px 5px 0 0; }
+        .cat-list { list-style: none; padding: 0; margin: 0; }
+        .cat-item { border-bottom: 1px solid #f1f1f1; }
+        .cat-item:last-child { border-bottom: none; }
+        .cat-link { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 12px 15px; 
+            color: #555; 
+            text-decoration: none; 
+            transition: all 0.2s; 
+            background: white;
+        }
+        .cat-link:hover { background: #f8f9fa; color: #007bff; padding-left: 20px; }
+        .cat-link.active { color: #007bff; font-weight: 600; background: #f0f8ff; }
+        .badge-count { background: #007bff; color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.8rem; }
+
+        /* Main Content */
+        .section-title { font-size: 1.2rem; font-weight: 700; color: #333; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        
+        /* Book Grid Cards */
+        .book-card { 
+            border: none; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            background: white; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+            transition: transform 0.2s; 
+            height: 100%;
+        }
+        .book-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
+        .book-img-wrapper { position: relative; padding-top: 130%; overflow: hidden; background: #eee; }
+        .book-img { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            object-fit: cover; 
+            transition: transform 0.3s;
+        }
+        .book-card-body { padding: 15px; }
+        .book-title { font-weight: 700; color: #333; margin-bottom: 5px; font-size: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 3rem; }
+        .book-author { color: #777; font-size: 0.9rem; margin-bottom: 8px; }
+        .book-cat-badge { font-size: 0.75rem; background: #007bff; color: white; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; }
+        
     </style>
 </head>
 <body>
 
-    <div class="hero text-center">
-        <div class="container">
-            <h1 class="display-4"><i class="fas fa-book-reader"></i> Tra Cứu Thư Viện</h1>
-            <p class="lead">Tìm kiếm sách, kiểm tra tình trạng nhanh chóng</p>
+    <!-- Top Navbar -->
+    <header class="navbar-custom">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="search.php" class="navbar-brand"><i class="fas fa-book-open"></i> Thư Viện Sách</a>
+            <div class="d-flex align-items-center">
+                <a href="search.php" class="nav-link me-3 text-white">Trang chủ</a>
+                <a href="index.php" class="nav-link text-white"><i class="fas fa-user-lock"></i> Quản lý</a>
+            </div>
             
-            <form class="row justify-content-center mt-4" method="GET">
-                <div class="col-md-6">
-                    <div class="input-group mb-3">
-                        <select name="cat" class="form-select" style="max-width: 150px;">
-                            <option value="">- Danh mục -</option>
-                            <?php foreach($categories as $c): ?>
-                                <option value="<?php echo $c['id']; ?>" <?php echo $cat_filter == $c['id'] ? 'selected' : ''; ?>>
-                                    <?php echo $c['name']; ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <input type="text" name="search" class="form-control" placeholder="Nhập tên sách, ISBN..." value="<?php echo htmlspecialchars($search); ?>">
-                        <button class="btn btn-warning fw-bold" type="submit"><i class="fas fa-search"></i> Tìm kiếm</button>
-                    </div>
-                </div>
+            <form class="d-flex" style="width: 300px;" method="GET">
+                <input class="form-control search-box" type="search" name="search" placeholder="Tìm kiếm sách..." value="<?php echo htmlspecialchars($search); ?>">
+                <button class="btn btn-search" type="submit"><i class="fas fa-search"></i></button>
             </form>
-            <a href="index.php" class="text-white text-decoration-underline">Đăng nhập Quản trị viên</a>
         </div>
-    </div>
+    </header>
 
-    <div class="container mb-5">
+    <div class="container">
+        <!-- Banner Slider (Placeholder) -->
+        <div class="banner-section text-center">
+            <h2 class="fw-bold">Sách mới ra mắt</h2>
+            <p>Cập nhật những đầu sách mới nhất</p>
+            <div class="mt-3">
+               <span style="display:inline-block; width: 30px; height: 4px; background: rgba(255,255,255,0.5); margin: 0 2px;"></span>
+               <span style="display:inline-block; width: 30px; height: 4px; background: white; margin: 0 2px;"></span>
+               <span style="display:inline-block; width: 30px; height: 4px; background: rgba(255,255,255,0.5); margin: 0 2px;"></span>
+            </div>
+        </div>
+
         <div class="row">
-            <?php if(count($books) > 0): ?>
-                <?php foreach($books as $book): ?>
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100 shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0 me-3">
+            <!-- Sidebar: Categories -->
+            <div class="col-lg-3 mb-4">
+                <div class="categories-card rounded bg-white">
+                    <div class="cat-header d-flex justify-content-between align-items-center">
+                        <span>Danh mục sách</span>
+                        <a href="search.php" class="text-white small" style="text-decoration: underline;"><i class="fas fa-list"></i> Tất cả</a>
+                    </div>
+                    <ul class="cat-list">
+                        <?php foreach($categories as $c): ?>
+                            <li class="cat-item">
+                                <a href="search.php?cat=<?php echo $c['id']; ?>" class="cat-link <?php echo $cat_filter == $c['id'] ? 'active' : ''; ?>">
+                                    <span><?php echo htmlspecialchars($c['name']); ?></span>
+                                    <span class="badge-count"><?php echo $c['book_count']; ?></span>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main Content: Book Grid -->
+            <div class="col-lg-9">
+                <h4 class="section-title">Sách mới nhất</h4>
+                
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4">
+                    <?php if(count($books) > 0): ?>
+                        <?php foreach($books as $book): ?>
+                        <div class="col">
+                            <div class="book-card h-100 position-relative">
+                                <!-- Image -->
+                                <a href="book_detail.php?id=<?php echo $book['id']; ?>" class="book-img-wrapper d-block">
                                     <?php if (!empty($book['image'])): ?>
-                                        <a href="book_detail.php?id=<?php echo $book['id']; ?>">
-                                            <img src="/Quanlythuvien/<?php echo $book['image']; ?>" class="book-cover" alt="Cover">
-                                        </a>
+                                        <img src="/Quanlythuvien/<?php echo $book['image']; ?>" class="book-img" alt="<?php echo $book['title']; ?>">
                                     <?php else: ?>
-                                        <div class="bg-light d-flex align-items-center justify-content-center book-cover text-muted">
-                                            <i class="fas fa-image fa-2x"></i>
+                                        <div class="book-img d-flex align-items-center justify-content-center bg-light text-muted">
+                                            <i class="fas fa-image fa-3x"></i>
                                         </div>
                                     <?php endif; ?>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h5 class="card-title">
-                                        <a href="book_detail.php?id=<?php echo $book['id']; ?>" class="text-decoration-none text-primary fw-bold">
+                                </a>
+
+                                <div class="book-card-body">
+                                    <h5 class="book-title" title="<?php echo htmlspecialchars($book['title']); ?>">
+                                        <a href="book_detail.php?id=<?php echo $book['id']; ?>" class="text-decoration-none text-dark">
                                             <?php echo htmlspecialchars($book['title']); ?>
                                         </a>
                                     </h5>
-                                    <h6 class="card-subtitle mb-2 text-muted"><?php echo $book['author']; ?></h6>
-                                    <p class="card-text small mb-2">
-                                        <strong>ISBN:</strong> <?php echo $book['isbn']; ?> | 
-                                        <strong>NXB:</strong> <?php echo $book['publisher_name']; ?> |
-                                        <strong>Danh mục:</strong> <?php echo $book['category_name']; ?>
-                                    </p>
                                     
-                                    <div class="mt-3">
-                                        <?php if($book['available_quantity'] > 0): ?>
-                                            <span class="badge bg-success p-2"><i class="fas fa-check-circle"></i> Có sẵn (<?php echo $book['available_quantity']; ?>)</span>
-                                            <small class="text-muted ms-2">Vị trí: Kệ A1 (Demo)</small>
-                                        <?php else: ?>
-                                            <span class="badge bg-danger p-2"><i class="fas fa-times-circle"></i> Đã hết</span>
-                                        <?php endif; ?>
+                                    <div class="book-author">
+                                        <?php echo $book['author_name'] ?? $book['author']; ?>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center">
+                                         <span class="book-cat-badge"><?php echo $book['category_name']; ?></span>
+                                    </div>
+                                    
+                                    <div class="mt-3 d-grid">
+                                        <a href="book_detail.php?id=<?php echo $book['id']; ?>" class="btn btn-outline-primary btn-sm rounded-pill">
+                                            Xem chi tiết
+                                        </a>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="col-12 py-5 text-center text-muted">
+                            <i class="fas fa-search fa-3x mb-3 text-secondary"></i>
+                            <h5>Không có sách nào trong danh mục này.</h5>
+                        </div>
+                    <?php endif; ?>
                 </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="col-12 text-center text-muted py-5">
-                    <i class="fas fa-search fa-3x mb-3"></i>
-                    <h4>Không tìm thấy sách nào phù hợp</h4>
-                </div>
-            <?php endif; ?>
+
+            </div>
         </div>
     </div>
 
-    <footer class="bg-light text-center py-3 border-top mt-auto">
-        <small class="text-muted">&copy; 2024 Thư Viện Đại Học ABC</small>
+    <footer class="bg-white text-center py-4 border-top mt-5">
+        <div class="text-muted small">&copy; 2024 Thư Viện Sách - All Rights Reserved.</div>
     </footer>
 
 </body>

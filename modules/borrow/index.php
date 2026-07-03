@@ -60,6 +60,30 @@ if (isset($_POST['create_borrow'])) {
     }
 }
 
+// Handle Approval / Rejection
+if (isset($_POST['approve_borrow'])) {
+    $id = $_POST['borrow_id'];
+    $pdo->prepare("UPDATE borrow_records SET status = 'borrowed', created_by = ? WHERE id = ?")
+        ->execute([$_SESSION['user_id'], $id]);
+    echo "<script>alert('Đã duyệt phiếu mượn!'); window.location.href='index.php';</script>";
+}
+
+if (isset($_POST['reject_borrow'])) {
+    $id = $_POST['borrow_id'];
+    $book_id = $_POST['book_id'];
+    
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare("DELETE FROM borrow_records WHERE id = ?")->execute([$id]);
+        $pdo->prepare("UPDATE books SET available_quantity = available_quantity + 1 WHERE id = ?")->execute([$book_id]);
+        $pdo->commit();
+        echo "<script>alert('Đã từ chối phiếu mượn!'); window.location.href='index.php';</script>";
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo "<script>alert('Lỗi: " . $e->getMessage() . "');</script>";
+    }
+}
+
 // Fetch active borrows
 $sql = "SELECT br.*, s.mssv, s.fullname, b.title, b.isbn 
         FROM borrow_records br
@@ -67,10 +91,68 @@ $sql = "SELECT br.*, s.mssv, s.fullname, b.title, b.isbn
         JOIN books b ON br.book_id = b.id
         WHERE br.status = 'borrowed'
         ORDER BY br.id DESC";
+
 $borrows = $pdo->query($sql)->fetchAll();
+
+// Fetch Pending Requests
+$sql_pending = "SELECT br.*, s.mssv, s.fullname, b.title, b.isbn 
+        FROM borrow_records br
+        JOIN students s ON br.student_id = s.id
+        JOIN books b ON br.book_id = b.id
+        WHERE br.status = 'pending'
+        ORDER BY br.id ASC";
+$pending_borrows = $pdo->query($sql_pending)->fetchAll();
 ?>
 
 <div class="row">
+    <?php if(count($pending_borrows) > 0): ?>
+    <div class="col-12 mb-4">
+        <div class="card shadow border-left-warning">
+            <div class="card-header bg-warning text-dark font-weight-bold">
+                <i class="fas fa-clock"></i> Yêu Cầu Đang Chờ Duyệt (<?php echo count($pending_borrows); ?>)
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Sinh Viên</th>
+                                <th>Sách Đăng Ký</th>
+                                <th>Ngày Đăng Ký</th>
+                                <th>Hành Động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($pending_borrows as $p): ?>
+                            <tr>
+                                <td><?php echo $p['mssv'] . ' - ' . $p['fullname']; ?></td>
+                                <td><?php echo $p['title']; ?></td>
+                                <td><?php echo date('d/m/Y', strtotime($p['borrow_date'])); ?></td>
+                                <td>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="borrow_id" value="<?php echo $p['id']; ?>">
+                                        <button type="submit" name="approve_borrow" class="btn btn-success btn-sm">
+                                            <i class="fas fa-check"></i> Duyệt
+                                        </button>
+                                    </form>
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('Bạn chắc chắn muốn từ chối?');">
+                                        <input type="hidden" name="borrow_id" value="<?php echo $p['id']; ?>">
+                                        <input type="hidden" name="book_id" value="<?php echo $p['book_id']; ?>">
+                                        <button type="submit" name="reject_borrow" class="btn btn-danger btn-sm">
+                                            <i class="fas fa-times"></i> Từ chối
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="col-md-4">
         <div class="card shadow">
             <div class="card-header bg-primary text-white">Lập Phiếu Mượn</div>

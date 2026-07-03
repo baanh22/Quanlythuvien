@@ -63,6 +63,13 @@ function isActive($path) {
                         </a>
                     </li>
 
+                    <!-- Module 3: Tác giả -->
+                    <li class="nav-item">
+                        <a href="/Quanlythuvien/modules/authors/index.php" class="nav-link <?php echo isActive('modules/authors'); ?>">
+                            <i class="fas fa-pen-nib"></i> Tác Giả
+                        </a>
+                    </li>
+
                     <!-- Module 3: Sinh viên -->
                     <li class="nav-item">
                         <a href="/Quanlythuvien/modules/students/index.php" class="nav-link <?php echo isActive('modules/students'); ?>">
@@ -81,6 +88,14 @@ function isActive($path) {
                     <li class="nav-item">
                         <a href="/Quanlythuvien/modules/returns/index.php" class="nav-link <?php echo isActive('modules/returns'); ?>">
                             <i class="fas fa-undo"></i> Trả Sách & Phạt
+                        </a>
+                    </li>
+
+
+                    <!-- Module 7: Thống kê -->
+                    <li class="nav-item">
+                        <a href="/Quanlythuvien/modules/stats/index.php" class="nav-link <?php echo isActive('modules/stats'); ?>">
+                            <i class="fas fa-chart-line"></i> Thống Kê Tháng
                         </a>
                     </li>
 
